@@ -1,0 +1,215 @@
+---
+title: "HEALTH DATA ANALYTICS ASSIGNMENT"
+theme: default
+output: 
+  pdf_document: default
+---
+
+## **Assignment 1 - Practical**
+### The assignment objective is to clean and standardize the Health Facility Assessment data to a standard that will enable a Macro-Eye machine learning scientist to start working with the preprocessed data.
+
+## **Data Analytics Process**
+### We will use the Google Analysis Process to guide us through the analysis:
+1. **Ask** - Business Challenge/Objective/Question
+2. **Prepare** - Data generation, collection, storage and management
+3. **Process** - Data cleaning/data integrity
+4. **Analyze** - Data exploration, visualization and analysis
+5. **Share** - Communicating and interpreting results
+6. **Act**   - Putting insights to work
+
+## **Packages**
+### We will install and load required libraries
+```{r libraries, echo=TRUE,warning=FALSE,error=FALSE,message=FALSE}
+if(!require(rmarkdown)) install.packages("rmarkdown")
+if(!require(tinytex)) install.packages("tinytex")
+if(!require(skimr)) install.packages("naniar")
+if(!require(tidyverse)) install.packages("tidyverse")
+if(!require(janitor)) install.packages("janitor")
+if(!require(stringr)) install.packages("stringr")
+if(!require(skimr)) install.packages("skimr")
+if(!require(DataExplorer)) install.packages("DataExplorer")
+
+
+
+library(rmarkdown)
+library(tinytex)
+library(tidyverse)
+library(janitor)
+library(DataExplorer)
+library(naniar)
+library(stringr)
+
+
+
+```
+
+## **Data Loading**
+### Loading the dataset
+```{r dataset load,echo=TRUE,warning=FALSE,error=FALSE,message=FALSE}
+
+#function to read and clean columnn names
+read_data <- function(path){
+  #setting the data path
+df_path <- path
+#reading the dataset and cleaning the names
+df <- read_csv(df_path) %>% clean_names()
+}
+
+#applying read function to dataset
+health_facility_df = read_data("./www/Health Facility Assessment.csv")
+```
+
+## **Data Processing**
+### Understanding dataset structure
+```{r dataset structure, echo=TRUE}
+#creating function to understand the data structure
+df_structure <- function(df){
+  head(df)
+  skim(df)
+  str(df)
+  summary(df)
+}
+
+#applying the function to the data
+df_structure(health_facility_df)
+```
+
+
+### Renaming dataset columns
+```{r r dataset renaming, echo=TRUE,warning=FALSE,error=FALSE,message=FALSE}
+#function to rename/drop the column characters
+df_rename_columns <- function(df,character1,character2,character3){
+  #drops character 1 from column names
+  names(df)=gsub(character1,"",names(df))
+  #drops character 2 from column names
+  names(df)=gsub(character2,"",names(df))
+  #drops character 3 from column names
+  names(df)=gsub(character3,"",names(df))
+ 
+  return(data.frame(df))
+}
+
+#applying function to dataset
+health_facility_df <- df_rename_columns(health_facility_df,                                       "form_health_centre_information_","form_",
+        "grp_infection_prevention_and_control_")
+```
+
+### Creating a quick summary report of the data
+```{r dataset report, echo=TRUE,warning=FALSE,error=FALSE,message=FALSE}
+#report output gives us a quick summary on basic statistics, data structure
+create_report(health_facility_df)
+```
+
+### Checking and dealing with missing values
+
+### Replacing "---" with NA
+```{r replacing with NA,echo=TRUE,warning=FALSE,error=FALSE,message=FALSE}
+makeNA <- function(x) str_replace(x,"---",NA_character_)
+health_facility_df = mutate_all(health_facility_df, funs(makeNA))
+```
+
+```{r missing values,echo=TRUE,warning=FALSE,error=FALSE,message=FALSE}
+
+#replacing __ with NAs
+#health_facility_df[health_facility_df == "---"] <- NA
+
+df_missing_values <- function(df){
+  
+  #table output with the missing values summary per feature
+  print(miss_var_summary(df))
+
+ #Plotting percentage of missing values per feature
+  print(gg_miss_var(df, show_pct = TRUE)) 
+ 
+}
+
+#applying function to dataset
+df_missing_values(health_facility_df)
+```
+
+### Dropping columns and rows with more than 50% missing values
+```{r drop NAs, echo=TRUE}
+
+#function to drop rows and columns with missing values
+df_drop_rowcol_missingvalues <- function(df,perc){
+  df_dropNA<-df[which(rowMeans(!is.na(df)) > perc), which(colMeans(!is.na(df)) > perc)]
+  return(data.frame(df_dropNA))
+}
+
+#applying function to dataset
+health_facility_dropNA_df <-df_drop_rowcol_missingvalues(health_facility_df,0.5)
+```
+
+### Filtering relevant columns for future analysis
+```{r filter columns, echo=TRUE}
+#dropping irrelevant columns
+health_facility_dropcol_df <- health_facility_dropNA_df %>% select(-c(1,2,34,35))
+names(health_facility_dropcol_df)
+```
+
+### Creating lat, lon columns from facility gps
+```{r,echo=TRUE}
+health_facility_clean_df <- health_facility_dropcol_df %>% 
+  separate(facility_gps, c("lat","lon"),sep = ",") 
+```
+
+
+### Filtering columns for imputation
+```{r,echo=TRUE}
+#columns to be imputed
+impute_cols <- c(33:48,151:154,161,162,179:182)
+
+#df not to be imputed
+nonimpute_df <- health_facility_clean_df %>% 
+  select(-impute_cols) 
+
+#df to be imputed
+impute_df <- health_facility_clean_df %>% 
+  select(impute_cols) 
+
+impute_df <- data.frame(lapply(impute_df, as.integer))
+```
+
+### Exploring missing values in the impute data
+```{r, echo=TRUE}
+#applying missing values function to dataset
+df_missing_values(impute_df)
+```
+### Imputing the missing values
+```{r imputing data, echo=TRUE}
+#function to impute missing values per column
+
+for(i in 1:ncol(impute_df)) {
+  impute_df[ , i][is.na(impute_df[ , i])] <- mean(impute_df[ , i], na.rm=TRUE)
+  }
+
+summary(impute_df)
+```
+
+### Merging imputed data with non imputed data and dropping any NA values
+```{r merging datasets, echo=TRUE}
+#merging process
+health_facility_final_df <- cbind(nonimpute_df,impute_df)
+
+head(health_facility_final_df)
+```
+
+### Saving cleaned dataset 
+```{r saving output, echo=TRUE}
+
+#function to save cleaned dataset
+save_data <- function(df,path){
+#saving data
+ write.csv(df,path,row.names = FALSE) 
+}
+
+#applying save function to dataset
+save_data(health_facility_final_df,"./www/Health Facility Assessment_cleaned.csv")
+
+```
+
+## **Assignment 2 - Theory**
+### The task is to describe the steps, tools and extra datasets you would use to match the master facility list with the health facility assessment file. Include a short paragraph explaining how you would approach this problem and the tools you would use.
+
+## **Solution**
+First of all, we need to determine which columns are common between the Master Health Facility and the Health Facility Assessment datasets. Using the dplyr package, I will use the inner_join function to find an intersection of the facility name in both datasets and merge the two datasets. A shapefile with the province, district, chiefdom, and location boundaries would be helpful in conducting geospatial analysis of the dataset. R packages such as leaflet, sf, rgdal would be helpful in the geospatial analysis.
