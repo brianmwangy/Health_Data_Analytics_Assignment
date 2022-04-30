@@ -6,7 +6,7 @@ output:
 ---
 
 ## **Assignment 1 - Practical**
-### The assignment objective is to clean and standardize the Health Facility Assessment data to a standard that will enable a Macro-Eye machine learning scientist to start working with the preprocessed data.
+### The assignment objective is to clean and standardize the Health Facility Assessment data to a standard  a  machine learning scientist to start working with the preprocessed data.
 
 ## **Data Analytics Process**
 ### We will use the Google Analysis Process to guide us through the analysis:
@@ -207,9 +207,3 @@ save_data <- function(df,path){
 save_data(health_facility_final_df,"./www/Health Facility Assessment_cleaned.csv")
 
 ```
-
-## **Assignment 2 - Theory**
-### The task is to describe the steps, tools and extra datasets you would use to match the master facility list with the health facility assessment file. Include a short paragraph explaining how you would approach this problem and the tools you would use.
-
-## **Solution**
-First of all, we need to determine which columns are common between the Master Health Facility and the Health Facility Assessment datasets. Using the dplyr package, I will use the inner_join function to find an intersection of the facility name in both datasets and merge the two datasets. A shapefile with the province, district, chiefdom, and location boundaries would be helpful in conducting geospatial analysis of the dataset. R packages such as leaflet, sf, rgdal would be helpful in the geospatial analysis.
